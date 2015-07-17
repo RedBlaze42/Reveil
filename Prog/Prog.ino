@@ -61,12 +61,29 @@ const int D5=11; // Constante pour la broche 11
 const int D6=12; // Constante pour la broche 12
 const int D7=13; // Constante pour la broche 13
 const int buz=7;
+const int select=14;
+const int gauche=6;
+const int droite=5;
+const int haut=4;
+const int bas=3;
+const int lumierebut=2;
+const int lumierepin = 15;
+boolean ifLum=false;
 
 // --- Déclaration des constantes des broches analogiques ---
 
 
 // --- Déclaration des variables globales ---
-
+byte alarmLogo[8] = {//Logo alarme
+	0b00000,
+	0b00000,
+	0b01110,
+	0b10011,
+	0b10101,
+	0b10001,
+	0b01110,
+	0b00000
+};
 
 
 // --- Déclaration des objets utiles pour les fonctionnalités utilisées ---
@@ -83,9 +100,15 @@ void setup()   { // debut de la fonction setup()
 // --- ici instructions à exécuter 1 seule fois au démarrage du programme --- 
 
 // ------- Initialisation fonctionnalités utilisées -------  
+
+
 //Initialisation de Time
 timeSet();
-Alarm.timerRepeat(1500, timeSet); 
+Alarm.timerRepeat(500, timeSet); 
+
+//Inisialisation du rétroeclerage
+attachInterrupt(0, lumiere, CHANGE);
+
 // Initialisation de l'afficheur LCD 
 lcd.begin(20,4); // Initialise le LCD avec 20 colonnes x 4 lignes
 delay(10); // pause rapide pour laisser temps initialisation
@@ -99,13 +122,17 @@ delay(10); // pause rapide pour laisser temps initialisation
  pinMode (4,INPUT); // Broche 4 configurée en entrée
  pinMode (5,INPUT); // Broche 5 configurée en entrée
  pinMode (6,INPUT); // Broche 6 configurée en entrée
+ pinMode (14,INPUT); // Broche 14 Select configurée en entrée
+ pinMode (15,OUTPUT); // Broche 15 Lumiere configurée en entrée
 
 // ------- Activation si besoin du rappel au + (pullup) des broches en entrées numériques -------  
- digitalWrite (2,HIGH); // Rappel au + activé sur la broche 2 configurée en entrée
+ digitalWrite (14,HIGH); // Rappel au + activé sur la broche 2 configurée en entrée
  digitalWrite (3,HIGH); // Rappel au + activé sur la broche 3 configurée en entrée
  digitalWrite (4,HIGH); // Rappel au + activé sur la broche 4 configurée en entrée
  digitalWrite (5,HIGH); // Rappel au + activé sur la broche 5 configurée en entrée
  digitalWrite (6,HIGH); // Rappel au + activé sur la broche 6 configurée en entrée
+ 
+ 
 
 // ------- Initialisation des variables utilisées -------  
 
@@ -186,10 +213,75 @@ void timeSet(){
   setTime(hours, minutes, seconds, days, months, years); 
 }
 
+// ////////////////////////// Alarme /////////////////////
+
+
+void alarm1(int repeat){
+  for(short i = 0;i<repeat;i++){
+  digitalWrite(buz,HIGH);
+  delay(200);
+  digitalWrite(buz,LOW);
+  delay(1000);
+  }
+}
+
+void alarm2(int repeat,int freq){
+  for(short i = 0;i<repeat;i++){
+  tone(buz,500,500);
+  delay(1500);
+  }
+}
+void alarm3(int repeat){
+  for(short i = 0;i<repeat;i++) {
+  tone(buz,map(i,0,repeat,100,1000),500);
+  delay(1500);
+  }
+}
+
+int difftempS(int h,int m,int s,int hn,int mn,int sn){
+    int sa = h*3600 + m*60 + s;
+    int san = hn*3600 + mn*60 + sn;
+    int difs = sa - san;
+    difs = difs - difftempH(h,m,s,hn,mn,sn) *3600;
+    difs = difs - difftempM(h,m,s,hn,mn,sn) *60;
+    return difs;
+}
+int difftempH(int h,int m,int s,int hn,int mn,int sn){
+    int sa = h*3600 + m*60 + s;
+    int san = hn*3600 + mn*60 + sn;
+    unsigned int difh = (sa - san)/3600;
+    return difh;
+}
+int difftempM(int h,int m,int s,int hn,int mn,int sn){
+    int sa = h*3600 + m*60 + s;
+    int san = hn*3600 + mn*60 + sn;
+    unsigned int difm = (sa - san) - difftempH(h,m,s,hn,mn,sn) *3600;;
+    difm = difm/60;
+    return difm;
+}
+
+void lumiere(){
+  if(iflum){
+     digitalWrite(lumierepin,LOW);
+     iflum=false;
+  }else{
+      digitalWrite(lumierepin,HIGH);
+     iflum=true;
+     Alarm.timerOnce(60, lumiere);
+  }
+}
+
+
+int but(){
+  
+}
 // ////////////////////////// Fin du programme //////////////////// 
 
 
-// ////////////////////////// Mémo instructions //////////////////// 
-// ////////////////////////// Fin Mémo instructions //////////////////// 
+// ////////////////////////// Mémo instructions /////////////////////*
+
+
+
+*// ////////////////////////// Fin Mémo instructions //////////////////// 
 
 
