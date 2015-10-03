@@ -1,8 +1,8 @@
-// --- Programme Arduino --- 
-// Trame de code générée par le générateur de code Arduino
-// du site www.mon-club-elec.fr 
 
-// Auteur du Programme : X. HINAULT - Tous droits réservés 
+
+// --- Programme Arduino --- 
+
+// Auteur du Programme : Hugo.A - Tous droits réservés 
 // Programme écrit le : 2/7/2015.
 
 // ------- Licence du code de ce programme ----- 
@@ -20,7 +20,7 @@
 // ////////////////////  PRESENTATION DU PROGRAMME //////////////////// 
 
 // -------- Que fait ce programme ? ---------
- /* Reveil */ 
+ /*Un Reveil */ 
 
 // --- Fonctionnalités utilisées --- 
 
@@ -48,6 +48,7 @@
 #include <LiquidCrystal.h> // Inclusion de la librairie pour afficheur LCD 
 #include <TimeAlarms.h>
 #include <Time.h>
+#include <Wire.h>
 #include <EEPROM.h> // Librairie pour le stockage de données en mémoire Eeprom interne 
 
 // --- Déclaration des constantes utiles ---
@@ -103,14 +104,14 @@ void setup()   { // debut de la fonction setup()
 
 
 //Initialisation de Time
-timeSet();
-Alarm.timerRepeat(500, timeSet); 
+timeReglage();
+Alarm.timerRepeat(500, timeReglage); 
 
 //Inisialisation du rétroeclerage
 attachInterrupt(0, lumiere, CHANGE);
 
 // Initialisation de l'afficheur LCD 
-lcd.begin(20,4); // Initialise le LCD avec 20 colonnes x 4 lignes
+lcd.begin(16,2); // Initialise le LCD avec 20 colonnes x 4 lignes
 delay(10); // pause rapide pour laisser temps initialisation
 
 // ------- Broches en sorties numériques -------  
@@ -131,8 +132,20 @@ delay(10); // pause rapide pour laisser temps initialisation
  digitalWrite (4,HIGH); // Rappel au + activé sur la broche 4 configurée en entrée
  digitalWrite (5,HIGH); // Rappel au + activé sur la broche 5 configurée en entrée
  digitalWrite (6,HIGH); // Rappel au + activé sur la broche 6 configurée en entrée
- 
- 
+
+// ------- Activation des alarmes -------  
+for(byte i = 1;i<=EEPROM.read(0);i=i+4){
+  if(EEPROM.read(i)){
+    Alarm.alarmRepeat(EEPROM.read(i+1),EEPROM.read(i+2),0,alarm1);
+  }
+}
+/*
+ * Gauche = 1
+ * Droite = 2
+ * Haut = 3
+ * Bas = 4
+ * Select = 5
+ */
 
 // ------- Initialisation des variables utilisées -------  
 
@@ -169,19 +182,19 @@ lcdWrite();
 
 void lcdWrite(){// Affiche le temp sur l'ecran
 
-  printDigit(hour());
+  printDigits(hour());
   lcd.print(hour());
   lcd.print(":");
-  printDigit(minute());
+  printDigits(minute());
   lcd.print(minute());
   lcd.print(":");
-  printDigit(second());
+  printDigits(second());
   lcd.print(second());
   lcd.setCursor(0,2);
-  printDigit(day());
+  printDigits(day());
   lcd.print(day());
   lcd.print("/");
-  printDigit(month());
+  printDigits(month());
   lcd.print(month());
   lcd.print("/");
   lcd.print(year());
@@ -199,25 +212,25 @@ int printDigits(int digits)
   }
 }
 
-void timeSet(){
-  Wire.beginTransmission(DS1307_I2C_ADDRESS);   // Open I2C line in write mode
+void timeReglage(){
+  //Wire.beginTransmission(DS1307_I2C_ADDRESS);   // Open I2C line in write mode
   Wire.write((byte)0x00);                              // Set the register pointer to (0x00)
   Wire.endTransmission();                       // End Write Transmission
-  Wire.requestFrom(DS1307_I2C_ADDRESS, 7);      // Open the I2C line in send mode
-  seconds     = bcdToDec(Wire.read() & 0x7f); // Read seven bytes of data
-  minutes     = bcdToDec(Wire.read());
-  hours       = bcdToDec(Wire.read() & 0x3f);  
-  days = bcdToDec(Wire.read());
-  months      = bcdToDec(Wire.read());
-  years       = bcdToDec(Wire.read());
-  setTime(hours, minutes, seconds, days, months, years); 
+//  Wire.requestFrom(DS1307_I2C_ADDRESS, 7);      // Open the I2C line in send mode
+  int secon     = bcdToDec(Wire.read() & 0x7f); // Read seven bytes of data
+  int minutes     = bcdToDec(Wire.read());
+  int hours       = bcdToDec(Wire.read() & 0x3f);  
+  int days = bcdToDec(Wire.read());
+  int months      = bcdToDec(Wire.read());
+  int years       = bcdToDec(Wire.read());
+  setTime(hours, minutes, secon, days, months, years); 
 }
 
 // ////////////////////////// Alarme /////////////////////
 
 
-void alarm1(int repeat){
-  for(short i = 0;i<repeat;i++){
+void alarm1(){
+  for(short i = 0;i<10;i++){
   digitalWrite(buz,HIGH);
   delay(200);
   digitalWrite(buz,LOW);
@@ -261,27 +274,68 @@ int difftempM(int h,int m,int s,int hn,int mn,int sn){
 }
 
 void lumiere(){
-  if(iflum){
+  if(ifLum){
      digitalWrite(lumierepin,LOW);
-     iflum=false;
+     ifLum=false;
   }else{
       digitalWrite(lumierepin,HIGH);
-     iflum=true;
+     ifLum=true;
      Alarm.timerOnce(60, lumiere);
   }
 }
 
 
 int but(){
-  
+  if(digitalRead(select) == LOW){
+    return 5;
+  }else if(digitalRead(gauche) == LOW){
+    return 1;
+  }else if(digitalRead(droite) == LOW){
+    return 2;
+  }else if(digitalRead(haut) == LOW){
+    return 3;
+  }else if(digitalRead(bas) == LOW){
+    return 4;
+  }else{
+    return 0;
+  }
 }
+
+
+
+void newAlarm(byte h,byte m){
+  byte i = EEPROM.read(0) + 1;
+  EEPROM.write(0,i);
+  i=i*4;
+  i=i-4;
+  EEPROM.write(i+2,h);
+  EEPROM.write(i+3,m);
+}
+// ////////////////////////// Conversion Hexadécimal //////////////
+
+byte decToBcd(byte val){
+// Convert normal decimal numbers to binary coded decimal
+  return ( (val/10*16) + (val%10) );
+}
+
+byte bcdToDec(byte val)  {
+// Convert binary coded decimal to normal decimal numbers
+  return ( (val/16*10) + (val%16) );
+}
+  
 // ////////////////////////// Fin du programme //////////////////// 
 
 
-// ////////////////////////// Mémo instructions /////////////////////*
-
-
-
-*// ////////////////////////// Fin Mémo instructions //////////////////// 
+// ////////////////////////// Mémo instructions ////////////////////
+/*
+ * Bouton:
+ * Gauche = 1
+ * Droite = 2
+ * Haut = 3
+ * Bas = 4
+ * Select = 5
+ *
+ */
+ // ////////////////////////// Fin Mémo instructions //////////////////// 
 
 
